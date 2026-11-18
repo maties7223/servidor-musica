@@ -1,6 +1,7 @@
 from flask import Flask, request, send_file
 import yt_dlp
 import os
+import base64
 
 app = Flask(__name__)
 
@@ -11,8 +12,17 @@ def download_audio():
         return "Falta el parámetro 'url'", 400
 
     os.makedirs('downloads', exist_ok=True)
-    
-    # Configuración avanzada para saltarse el bloqueo de YouTube en servidores cloud
+
+    cookie_path = 'cookies.txt'
+    cookies_b64 = os.getenv('YOUTUBE_COOKIES_BASE64')
+    if cookies_b64:
+        try:
+            decoded_bytes = base64.b64decode(cookies_b64)
+            with open(cookie_path, 'wb') as f:
+                f.write(decoded_bytes)
+        except Exception as e:
+            print(f"Error decodificando cookies: {e}")
+
     ydl_opts = {
         'format': 'bestaudio/best',
         'postprocessors': [{
@@ -21,15 +31,13 @@ def download_audio():
             'preferredquality': '192',
         }],
         'outtmpl': 'downloads/%(id)s.%(ext)s',
-        # Forzar el cliente web y evitar restricciones de IP de datacenter
+        'cookiefile': cookie_path if os.path.exists(cookie_path) else None,
         'extractor_args': {
             'youtube': {
-                'player_client': ['web', 'android']
+                'player_client': ['android', 'web']
             }
         },
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
+        'socket_timeout': 30
     }
 
     try:
@@ -45,4 +53,6 @@ def download_audio():
         return str(e), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    # Render asigna un puerto dinámico mediante la variable de entorno PORT
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
