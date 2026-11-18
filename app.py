@@ -10,10 +10,9 @@ def download_audio():
     if not video_url:
         return "Falta el parámetro 'url'", 400
 
-    # Carpeta temporal para guardar el audio
     os.makedirs('downloads', exist_ok=True)
     
-    # Configuración de yt-dlp con camuflaje de navegador para evitar bloqueos
+    # Configuración avanzada para saltarse el bloqueo de YouTube en servidores cloud
     ydl_opts = {
         'format': 'bestaudio/best',
         'postprocessors': [{
@@ -22,6 +21,12 @@ def download_audio():
             'preferredquality': '192',
         }],
         'outtmpl': 'downloads/%(id)s.%(ext)s',
+        # Forzar el cliente web y evitar restricciones de IP de datacenter
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['web', 'android']
+            }
+        },
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
@@ -31,7 +36,6 @@ def download_audio():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=True)
             filename = ydl.prepare_filename(info)
-            # Cambiamos la extensión a .m4a que es el resultado final del postprocessor
             base, _ = os.path.splitext(filename)
             final_file = base + ".m4a"
 
